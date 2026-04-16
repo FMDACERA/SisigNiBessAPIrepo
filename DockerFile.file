@@ -5,16 +5,16 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["SNBWebApi/SNBWebApiAdmin.csproj", "SNBWebApiAdmin/"]
-RUN dotnet restore "SNBWebApiAdmin/SNBWebApiAdmin.csproj"
+COPY ["SisigNiBessWebApiAdmin/SisigNiBessWebApiAdmin.csproj", "SisigNiBessWebApiAdmin/"]
+RUN dotnet restore "SisigNiBessWebApiAdmin/SisigNiBessWebApiAdmin.csproj"
 COPY . .
-WORKDIR "/src/SNBWebApi"
-RUN dotnet build "SNBWebApiAdmin.csproj" -c Release -o /app/build
+WORKDIR "/src/SisigNiBessWebApiAdmin"
+RUN dotnet build "SisigNiBessWebApiAdmin.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "SNBWebApiAdmin.csproj" -c Release -o /app/publish
+RUN dotnet publish "SisigNiBessWebApiAdmin.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "SNBWebApiAdmin.dll"]
+ENTRYPOINT ["dotnet", "SisigNiBessWebApiAdmin.dll"]
