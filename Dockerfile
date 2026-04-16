@@ -7,7 +7,7 @@ COPY . .
 RUN dotnet publish -c Release -o /app
 
 # Use the ASP.NET runtime image for the final stage
-FROM ://microsoft.com
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /app
 COPY --from=build /app .
 ENTRYPOINT ["dotnet", "SisigNiBessWebApiAdmin.dll"]
