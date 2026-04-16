@@ -5,7 +5,7 @@ EXPOSE 443
 
 FROM ://microsoft.com AS build
 WORKDIR /src
-COPY ["SisigNiBessWebApiAdmin/SisigNiBessWebApiAdmin.csproj", "SisigNiBessWebApiAdmin/"]
+COPY ["https://github.com/FMDACERA/SisigNiBessAPIrepo/tree/main/SisigNiBessWebApiAdmin/SisigNiBessWebApiAdmin.csproj", "SisigNiBessWebApiAdmin/"]
 RUN dotnet restore "SisigNiBessWebApiAdmin/SisigNiBessWebApiAdmin.csproj"
 COPY . .
 WORKDIR "/src/SisigNiBessWebApiAdmin"
