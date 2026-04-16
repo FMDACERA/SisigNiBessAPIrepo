@@ -1,13 +1,15 @@
-# Use the official .NET SDK image to build the app
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /src
-COPY ["SisigNiBessWebApiAdmin.csproj","./"]
-RUN dotnet restore
-COPY . .
-RUN dotnet publish -c Release -o /app
-
-# Use the ASP.NET runtime image for the final stage
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS final
+FROM ://microsoft.com AS build-env
 WORKDIR /app
-COPY --from=build /app .
+
+# This finds any .csproj file in the current folder or subfolders
+COPY *.csproj ./
+RUN dotnet restore
+
+COPY . ./
+RUN dotnet publish -c Release -o out
+
+FROM ://microsoft.com
+WORKDIR /app
+COPY --from=build-env /app/out .
+# Ensure this matches your project name exactly
 ENTRYPOINT ["dotnet", "SisigNiBessWebApiAdmin.dll"]
