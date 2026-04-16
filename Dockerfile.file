@@ -5,7 +5,7 @@ EXPOSE 443
 
 FROM ://microsoft.com AS build
 WORKDIR /src
-COPY ["SisigNiBessWebApiAdmin.csproj", "./"]
+COPY ["C:\Users\SISIG NI BESS\Downloads\Source Codes\SisigNiBessAPIrepo\SisigNiBessWebApiAdmin\SisigNiBessWebApiAdmin.csproj", "./"]
 RUN dotnet restore "./SisigNiBessWebApiAdmin.csproj"
 COPY . .
 RUN dotnet build "SisigNiBessWebApiAdmin.csproj" -c Release -o /app/build
