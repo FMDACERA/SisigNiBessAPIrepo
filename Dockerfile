@@ -1,7 +1,7 @@
 # Use the official .NET SDK image to build the app
 FROM ://microsoft.com AS build
 WORKDIR /src
-COPY ["SisigNiBessWebApiAdmin.csproj", "./"]
+COPY ["SisigNiBessWebApiAdmin.csproj"]
 RUN dotnet restore
 COPY . .
 RUN dotnet publish -c Release -o /app
