@@ -1,5 +1,7 @@
 ﻿using MySql.Data.MySqlClient;
+using System.Data;
 using System.Reflection;
+using ZstdSharp.Unsafe;
 
 namespace SisigNiBessWebApiAdmin.Database.Service
 {
@@ -25,18 +27,18 @@ namespace SisigNiBessWebApiAdmin.Database.Service
 
                     //MainThread.BeginInvokeOnMainThread(() =>
                     //{
-                        while (r.Read())
-                        {
-                            T t = new T();
+                    while (r.Read())
+                    {
+                        T t = new T();
 
-                            for (int inc = 0; inc < r.FieldCount; inc++)
-                            {
-                                Type type = t.GetType();
-                                PropertyInfo prop = type.GetProperty(r.GetName(inc));
-                                prop.SetValue(t, r.GetValue(inc), null);
-                            }
-                            res.Add(t);
+                        for (int inc = 0; inc < r.FieldCount; inc++)
+                        {
+                            Type type = t.GetType();
+                            PropertyInfo prop = type.GetProperty(r.GetName(inc));
+                            prop.SetValue(t, r.GetValue(inc), null);
                         }
+                        res.Add(t);
+                    }
                     //});
 
                     r.Close();
@@ -52,6 +54,62 @@ namespace SisigNiBessWebApiAdmin.Database.Service
             }
 
             return res;
+        }
+
+        public async Task ExecuteNonQueryCommandAsync(string SqlCommand)
+        {
+            using (MySqlConnection objCon = new MySqlConnection(ConnectionStrng))
+            {
+                var QryCmd = new MySqlCommand();
+                objCon.Open();
+
+                QryCmd.Connection = objCon;
+                QryCmd.CommandText = SqlCommand;
+                QryCmd.CommandType = CommandType.Text;
+
+                var r = await Task.Run(() =>
+                {
+                    return QryCmd.ExecuteNonQueryAsync();
+                });
+
+                QryCmd.Dispose();
+            }
+        }
+
+        public async Task<List<Dictionary<string, object>>> ExecuteQueryAsync(string sql)
+        {
+            var results = new List<Dictionary<string, object>>();
+
+            // 'using' ensures the connection is closed even if an error occurs
+            using (var connection = new MySqlConnection(ConnectionStrng))
+            {
+                connection.Open();
+
+                using (var command = new MySqlCommand(sql, connection))
+                {
+                    // ExecuteReaderAsync keeps the thread free during database I/O
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var row = new Dictionary<string, object>();
+
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                string columnName = reader.GetName(i);
+                                object columnValue = reader.GetValue(i);
+
+                                // Handle DBNull to avoid issues during JSON serialization
+                                row.Add(columnName, columnValue == DBNull.Value ? null : columnValue);
+                            }
+
+                            results.Add(row);
+                        }
+                    }
+                }
+            }
+
+            return results;
         }
     }
 }

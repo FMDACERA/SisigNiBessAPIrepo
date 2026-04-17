@@ -1,5 +1,7 @@
-﻿using SisigNiBessWebApiAdmin.Database.Model;
+﻿using SisigNiBessWebApiAdmin.Controllers;
+using SisigNiBessWebApiAdmin.Database.Model;
 using SisigNiBessWebApiAdmin.Database.Service;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace SisigNiBessWebApiAdmin.Repository
@@ -8,6 +10,7 @@ namespace SisigNiBessWebApiAdmin.Repository
     {
         public static async Task<List<CHART_MODEL>> GetBranchChartDetailsAsync(Int64 CutoffId)
         {
+            /*
             var rslt = await new DBService().GetDataListAsync<CHART_MODEL>(
 @"
 SELECT daily_sales.cutoff_id CUTOFF_ID,
@@ -20,6 +23,23 @@ JOIN branch_list ON daily_sales.branch_id = branch_list.branch_id
 JOIN cutoff ON daily_sales.cutoff_id = cutoff.cutoff_id
 WHERE daily_sales.cutoff_id = " + CutoffId + " AND daily_sales.branch_id != 6 GROUP BY daily_sales.cutoff_id,daily_sales.branch_id order by daily_sales.branch_id");
             return rslt;
+            */
+
+            var qry = @"
+SELECT daily_sales.cutoff_id CUTOFF_ID,
+	 BRANCH_NAME,
+	 CONCAT(CAST(DATE_FORMAT(`cutoff`.`CUTOFF_FRM`,'%M %d, %Y') AS CHAR CHARSET utf8mb3),' - ',CAST(DATE_FORMAT(`cutoff`.`CUTOFF_TO`,'%M %d, %Y') AS CHAR CHARSET utf8mb3)) AS CUTOFF_DESC,
+	 SUM(gross_sales) AS GROSS_SALES,
+	 SUM(cash_onhand) AS CASH_ONHAND
+FROM daily_sales 
+JOIN branch_list ON daily_sales.branch_id = branch_list.branch_id
+JOIN cutoff ON daily_sales.cutoff_id = cutoff.cutoff_id
+WHERE daily_sales.cutoff_id = " + CutoffId + " AND daily_sales.branch_id != 6 GROUP BY daily_sales.cutoff_id,daily_sales.branch_id order by daily_sales.branch_id";
+
+            var items = await new DbServiceController().GetDataListAsync(qry);
+            var rslt = ConvertToModelList<CHART_MODEL>(items);
+            return rslt;
+
         }
         public static async Task<List<SALES_INVENTORY>> GetLstOfSalesInventoryGroupByDateAsync()
         {
@@ -63,5 +83,44 @@ WHERE daily_sales.cutoff_id = " + CutoffId + " AND daily_sales.branch_id != 6 GR
             var rslt = await new DBService().GetDataListAsync<SALES_REPORT>("select * from vwsalesreport order by cutoff_id desc limit 1");
             return rslt.FirstOrDefault();
         }
+
+
+        public static List<T> ConvertToModelList<T>(List<Dictionary<string, object>> dictionaryList) where T : new()
+        {
+            var list = new List<T>();
+
+            // Get properties once outside the loop for performance
+            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+            foreach (var dict in dictionaryList)
+            {
+                var item = new T();
+
+                foreach (var prop in properties)
+                {
+                    // Match dictionary key to property name (case-insensitive)
+                    if (dict.TryGetValue(prop.Name, out var value) && value != DBNull.Value)
+                    {
+                        // Ensure the value type matches the property type
+                        var targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+
+                        try
+                        {
+                            object convertedValue = Convert.ChangeType(value, targetType);
+                            prop.SetValue(item, convertedValue);
+                        }
+                        catch
+                        {
+                            // Log or handle type mismatch (e.g., trying to put a string into an int)
+                            continue;
+                        }
+                    }
+                }
+                list.Add(item);
+            }
+
+            return list;
+        }
+
     }
 }
