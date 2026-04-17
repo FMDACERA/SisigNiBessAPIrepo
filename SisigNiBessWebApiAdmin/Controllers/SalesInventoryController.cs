@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SisigNiBessWebApiAdmin.Database.Model;
 using SisigNiBessWebApiAdmin.Repository;
+using System.Threading.Tasks;
 
 namespace SisigNiBessWebApiAdmin.Controllers
 {
@@ -10,15 +11,28 @@ namespace SisigNiBessWebApiAdmin.Controllers
     public class SalesInventoryController : ControllerBase
     {
         [HttpGet(Name = "GetInventoryList")]
-        public List<SALES_INVENTORY> GetInventoryList()
+        public async Task<List<SALES_INVENTORY>> GetInventoryList()
         {
-            return SalesRepositoty.GetLstOfSalesInventoryGroupByDateAsync();
+            return await SalesRepositoty.GetLstOfSalesInventoryGroupByDateAsync();
         }
         [HttpGet]
         [Route("GetBranchChartDetails")]
-        public List<CHART_MODEL> GetBranchChartDetails([FromQuery] Int64 CutoffId)
+        public async Task<List<CHART_MODEL>> GetBranchChartDetails([FromQuery] Int64 CutoffId)
         {
-            return SalesRepositoty.GetBranchChartDetailsAsync(CutoffId);
+            return await SalesRepositoty.GetBranchChartDetailsAsync(CutoffId);
+        }
+
+        [HttpGet]
+        [Route("GetSalesInventoryDetailsByDateAsync")]
+        public async Task<List<SALES_INVENTORY_DETAILS>> GetSalesInventoryDetailsByDateAsync()
+        {
+            return await SalesRepositoty.GetSalesInventoryDetailsByDateAsync();
+        }
+        [HttpGet]
+        [Route("GetSalesReportByLastCutoffAsync")]
+        public async Task<SALES_REPORT> GetSalesReportByLastCutoffAsync()
+        {
+            return await SalesRepositoty.GetSalesReportByLastCutoffAsync();
         }
     }
 }
