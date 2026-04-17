@@ -31,5 +31,12 @@ namespace SisigNiBessWebApiAdmin.Controllers
             return await DbServiceRepository.GetGetAw<Dictionary<string, object>>(qry);
         }
 
+        [HttpGet("GetDataObject")]
+        public async Task<Dictionary<string, object>> GetDataObject([FromQuery] string qry)
+        {
+            return await DbServiceRepository.GetDataObject<Dictionary<string, object>>(qry);
+        }
+
+
     }
 }

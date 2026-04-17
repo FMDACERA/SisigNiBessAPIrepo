@@ -111,5 +111,41 @@ namespace SisigNiBessWebApiAdmin.Database.Service
 
             return results;
         }
+        public async Task<Dictionary<string, object>> GetDataObeject(string sql)
+        {
+            var results = new Dictionary<string, object>();
+
+            // 'using' ensures the connection is closed even if an error occurs
+            using (var connection = new MySqlConnection(ConnectionStrng))
+            {
+                connection.Open();
+
+                using (var command = new MySqlCommand(sql, connection))
+                {
+                    // ExecuteReaderAsync keeps the thread free during database I/O
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var row = new Dictionary<string, object>();
+
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                string columnName = reader.GetName(i);
+                                object columnValue = reader.GetValue(i);
+
+                                // Handle DBNull to avoid issues during JSON serialization
+                                row.Add(columnName, columnValue == DBNull.Value ? null : columnValue);
+                            }
+
+                            results = row;
+                        }
+                    }
+                }
+            }
+
+            return results;
+        }
+
     }
 }
