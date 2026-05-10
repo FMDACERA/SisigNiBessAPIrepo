@@ -7,7 +7,7 @@ namespace SisigNiBessWebApiAdmin.Database.Service
 {
     public class DBService
     {
-        public static string ConnectionStrng = "server=UbLEYzOvFk1jq.h.filess.io;user=root;database=sisignibess_prod;password=c5e49998c41fa96b59e6ae2d90ac00e4;port=45731";
+        public static string ConnectionStrng = "server=UbLEYzOvFk1jq.h.filess.io;user=root;database=sisignibess_prod;password=c5e49998c41fa96b59e6ae2d90ac00e4;port=45731;AllowMultiQueries=True;AllowUserVariables=True;";
 
         public async Task<List<T>> GetDataListAsync<T>(string query) where T : new()
         {

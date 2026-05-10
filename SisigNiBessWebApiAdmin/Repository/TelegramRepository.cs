@@ -75,9 +75,6 @@ namespace SisigNiBessWebApiAdmin.Repository
                     client.Dispose();
                 }
             }
-
-
-
         }
 
         private static async Task<List<REGISTERED_DEVICES>> GetRegisteredDevices()
