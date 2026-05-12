@@ -90,7 +90,7 @@ namespace SisigNiBessWebApiAdmin.Repository
 
                 foreach (var delivery in Deliveries)
                 {
-                    string message = "📢 You have incoming delivery today for " + delivery.EXPENSE_NAME;
+                    string message = "📢 You have an incoming delivery today for " + delivery.EXPENSE_NAME + ".";
 
                     foreach (var regDev in RegDevices)
                     {
