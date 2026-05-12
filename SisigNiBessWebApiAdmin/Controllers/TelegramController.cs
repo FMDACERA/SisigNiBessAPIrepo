@@ -47,5 +47,25 @@ namespace SisigNiBessWebApiAdmin.Controllers
             else
                 return StatusCode(500, $"Internal error: invalid secret code.");
         }
+
+        [HttpGet("Incoming-Deliveries")]
+        public async Task<IActionResult> NotifyDeliveries([FromHeader(Name = "X-Checkly-Token")] string token)
+        {
+            var secret = "Z@mZ1onZ3d232707";
+            if (token == secret)
+            {
+                try
+                {
+                    await TelegramRepository.SendTelegramDeliveriesNotification();
+                    return Ok(new { message = "Notification sent successfully", timestamp = DateTime.UtcNow });
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, $"Internal error: {ex.Message}");
+                }
+            }
+            else
+                return StatusCode(500, $"Internal error: invalid secret code.");
+        }
     }
 }
