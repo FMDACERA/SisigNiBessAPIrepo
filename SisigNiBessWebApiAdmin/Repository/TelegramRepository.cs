@@ -87,25 +87,24 @@ namespace SisigNiBessWebApiAdmin.Repository
             if (Deliveries.Count > 0)
             {
                 // Use a single HttpClient instance (better performance/memory)
+                var Deliverylist = Environment.NewLine  + string.Join(Environment.NewLine, Deliveries.Select(p => "● " + p.EXPENSE_NAME));
 
-                foreach (var delivery in Deliveries)
+                string message = "📢 You have an incoming delivery/s today " + Deliverylist;
+
+                foreach (var regDev in RegDevices)
                 {
-                    string message = "📢 You have an incoming delivery today for " + delivery.EXPENSE_NAME + ".";
+                    using var client = new HttpClient();
 
-                    foreach (var regDev in RegDevices)
-                    {
-                        using var client = new HttpClient();
+                    string url = $"https://api.telegram.org/bot{regDev.API_TOKEN}/sendMessage";
 
-                        string url = $"https://api.telegram.org/bot{regDev.API_TOKEN}/sendMessage";
+                    var payload = new { chat_id = regDev.CHAT_ID, text = message };
+                    var json = JsonSerializer.Serialize(payload);
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                        var payload = new { chat_id = regDev.CHAT_ID, text = message };
-                        var json = JsonSerializer.Serialize(payload);
-                        var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                        var response = await client.PostAsync(url, content);
-                        client.Dispose();
-                    }
+                    var response = await client.PostAsync(url, content);
+                    client.Dispose();
                 }
+
             }
         }
 
