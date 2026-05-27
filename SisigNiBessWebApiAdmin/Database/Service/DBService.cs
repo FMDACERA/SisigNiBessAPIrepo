@@ -212,6 +212,41 @@ namespace SisigNiBessWebApiAdmin.Database.Service
 
             return result;
         }
+        public async Task<bool> InsertDataFromListAsync<T>(List<string> propExemptions, T tableName, string spName) where T : new()
+        {
+            try
+            {
+                await using (var connection = new MySqlConnection(ConnectionStrng))
+                {
+                    await connection.OpenAsync();
 
+                    Type type = tableName.GetType();
+                    PropertyInfo[] properties = type.GetProperties();
+
+                    await using (var command = new MySqlCommand(spName, connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+
+                        foreach (PropertyInfo property in properties)
+                        {
+                            if (propExemptions == null || !propExemptions.Contains(property.Name))
+                            {
+                                object value = property.GetValue(tableName, null);
+                                command.Parameters.AddWithValue("IN_" + property.Name, value ?? DBNull.Value);
+                            }
+                        }
+
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception)
+            {
+                // Do not use DisplayErrorMsg here. Throw the exception up so your API Controller can handle it.
+                throw;
+            }
+        }
     }
 }

@@ -24,5 +24,10 @@ namespace SisigNiBessWebApiAdmin.Repository
         {
             await new DBService().ExecuteNonQueryCommandAsync(query);
         }
+
+        public static async Task<bool> InsertDataFromListAsync<T>(List<string> propExemptions, T tableName, string spName) where T : new()
+        {
+           return await new DBService().InsertDataFromListAsync<T>(propExemptions, tableName, spName);
+        }
     }
 }
