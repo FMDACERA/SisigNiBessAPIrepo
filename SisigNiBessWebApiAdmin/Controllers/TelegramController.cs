@@ -67,5 +67,19 @@ namespace SisigNiBessWebApiAdmin.Controllers
             else
                 return StatusCode(500, $"Internal error: invalid secret code.");
         }
+
+        [HttpGet("notify-admin")]
+        public async Task<IActionResult> NotifyAdminOnNewInventoryCreated([FromQuery] string BranchName)
+        {
+            try
+            {
+                await TelegramRepository.NotifyAdminOnNewInventoryCreated(BranchName);
+                return Ok(new { message = "Admin Notification sent successfully", timestamp = DateTime.UtcNow });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal error: {ex.Message}");
+            }
+        }
     }
 }

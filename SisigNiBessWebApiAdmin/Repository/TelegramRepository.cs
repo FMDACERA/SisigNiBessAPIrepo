@@ -108,6 +108,36 @@ namespace SisigNiBessWebApiAdmin.Repository
             }
         }
 
+        public async static Task NotifyAdminOnNewInventoryCreated(string BranchName)
+        {
+            var RegDevices = await GetRegisteredDevices();
+           
+         
+                bool allSentSuccessfully = true;
+                string message = "New inventory added for " + BranchName + " branch.";
+
+                foreach (var regDev in RegDevices)
+                {
+                    using var client = new HttpClient();
+
+                    string url = $"https://api.telegram.org/bot{regDev.API_TOKEN}/sendMessage";
+
+                    var payload = new { chat_id = regDev.CHAT_ID, text = message };
+                    var json = JsonSerializer.Serialize(payload);
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                    var response = await client.PostAsync(url, content);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        allSentSuccessfully = false; // Mark failure if one user didn't get it
+                    }
+
+                    client.Dispose();
+                }
+            
+        }
+
         private static async Task<List<REGISTERED_DEVICES>> GetRegisteredDevices()
         {
             var devices = await DbServiceRepository.GetDataListAsync<REGISTERED_DEVICES>("SELECT * FROM registered_devices");
