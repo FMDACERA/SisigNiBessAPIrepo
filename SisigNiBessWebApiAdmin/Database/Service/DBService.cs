@@ -232,7 +232,15 @@ namespace SisigNiBessWebApiAdmin.Database.Service
                             if (propExemptions == null || !propExemptions.Contains(property.Name))
                             {
                                 object value = property.GetValue(tableName, null);
-                                command.Parameters.AddWithValue("IN_" + property.Name, value ?? DBNull.Value);
+                                //  command.Parameters.AddWithValue("IN_" + property.Name, value ?? DBNull.Value);
+                                if (value == null)
+                                {
+                                    command.Parameters.AddWithValue("IN_" + property.Name, DBNull.Value);
+                                }
+                                else
+                                {
+                                    command.Parameters.AddWithValue("IN_" + property.Name, value);
+                                }
                             }
                         }
 
