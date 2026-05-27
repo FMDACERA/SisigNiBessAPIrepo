@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MySql.Data.MySqlClient;
 using SisigNiBessWebApiAdmin.Database.Model;
 using SisigNiBessWebApiAdmin.Database.Service;
 using SisigNiBessWebApiAdmin.Repository;
 using System.Collections.Generic;
+using System.Data;
 using System.Reflection;
 using System.Text.Json;
 
@@ -43,70 +45,92 @@ namespace SisigNiBessWebApiAdmin.Controllers
         }
 
         [HttpPost("ExecuteNonQuerySPA")]
-        public async Task<IActionResult> ExecuteNonQuerySPAsync([FromBody] GenericSpPayload payload)
+       [HttpPost("ExecuteNonQuerySPA")]
+public async Task<IActionResult> ExecuteNonQuerySPAsync([FromBody] GenericSpPayload payload)
+{
+    if (payload == null || string.IsNullOrEmpty(payload.SpName))
+    {
+        return BadRequest(new { success = false, message = "Invalid payload configuration." });
+    }
+
+    try
+    {
+        // 1. Parse the JSON data into a raw dictionary of keys and values 
+        // This completely bypasses System.Text.Json class reflection!
+        var rawJsonText = payload.Data.GetRawText();
+        var dataDictionary = JsonSerializer.Deserialize<Dictionary<string, object>>(rawJsonText);
+
+        if (dataDictionary == null)
         {
-            _dbServiceRepository = new DbServiceRepository();
+            return BadRequest(new { success = false, message = "Failed to parse data object into key/value pairs." });
+        }
 
+        // 2. Open the database connection directly right here in the endpoint
+        await using (var connection = new MySqlConnection(DBService.ConnectionStrng))
+        {
+            await connection.OpenAsync();
 
-            if (payload == null || string.IsNullOrEmpty(payload.ModelName))
+            await using (var command = new MySqlCommand(payload.SpName, connection))
             {
-                return BadRequest(new { success = false, message = "Invalid payload or missing ModelName." });
-            }
+                command.CommandType = CommandType.StoredProcedure;
 
-            try
-            {
-                // 1. Find the target C# Type dynamically using its class name string
-                // Replace "YourWebApiNamespace.Models" with your actual models namespace
-                // Replace "YourAssemblyName" with your project's assembly name (usually the project name)
-                string fullTypeName = $"SisigNiBessWebApiAdmin.Database.Model.{payload.ModelName}, SisigNiBessWebApiAdmin";
-                Type modelType = Type.GetType(fullTypeName);
-
-                if (modelType == null)
+                // 3. Loop through every key-value pair sent from the branch app
+                foreach (var kvp in dataDictionary)
                 {
-                    return BadRequest(new { success = false, message = $"Model type '{payload.ModelName}' not found on the server." });
+                    // If the property name is in your exemptions list (like "Id"), skip it
+                    if (payload.PropExemptions != null && payload.PropExemptions.Contains(kvp.Key))
+                    {
+                        continue;
+                    }
+
+                    // Extract the raw value cleanly
+                    object value = kvp.Value;
+
+                    // System.Text.Json parses numbers and objects into JsonElement structures. 
+                    // We extract the clean underlying value out of it safely.
+                    if (value is JsonElement element)
+                    {
+                        switch (element.ValueKind)
+                        {
+                            case JsonValueKind.String:
+                                value = element.GetString();
+                                break;
+                            case JsonValueKind.Number:
+                                // Automatically handles integers, decimals, and quantities safely
+                                if (element.TryGetInt64(out long l)) value = l;
+                                else value = element.GetDecimal();
+                                break;
+                            case JsonValueKind.True:
+                                value = true;
+                                break;
+                            case JsonValueKind.False:
+                                value = false;
+                                break;
+                            case JsonValueKind.Null:
+                                value = DBNull.Value;
+                                break;
+                            default:
+                                value = element.GetRawText();
+                                break;
+                        }
+                    }
+
+                    // 4. Map it straight into your MySQL stored procedure parameter
+                    command.Parameters.AddWithValue("IN_" + kvp.Key, value ?? DBNull.Value);
                 }
 
-                // 2. Deserialize the raw inner JSON data block straight into that target C# class type
-                object mappedModel;
-                try
-                {
-                    string rawJson = payload.Data.GetRawText();
-
-                    var standardOptions = new JsonSerializerOptions();
-                    mappedModel = JsonSerializer.Deserialize(rawJson, modelType, standardOptions);
-
-                }
-                catch (Exception)
-                {
-                    return BadRequest(new { success = false, message = $"Failed to map the 'Data' JSON object to the '{payload.ModelName}' model configuration." });
-                }
-
-                // 3. Use reflection to target your generic InsertDataFromListAsync<T> repository method
-
-                // Use a direct string literal
-                // Change DbServiceRepository.GetType() to typeof(DbServiceRepository)
-                MethodInfo method = _dbServiceRepository.GetType().GetMethod("InsertDataFromListAsync");
-                MethodInfo genericMethod = method.MakeGenericMethod(modelType);
-
-                // 4. Invoke the method asynchronously and capture the Task<bool> result
-                var task = (Task<bool>)genericMethod.Invoke(_dbServiceRepository, new object[] { payload.PropExemptions, mappedModel, payload.SpName });
-
-                bool isSuccess = await task;
-
-                if (isSuccess)
-                {
-                    return Ok(new { success = true, message = "Record processed successfully." });
-                }
-
-                return StatusCode(500, new { success = false, message = "Database execution failed internally." });
-            }
-            catch (Exception ex)
-            {
-                // Unpack TargetInvocationException if reflection threw the error
-                var actualException = ex is TargetInvocationException ? ex.InnerException : ex;
-                return StatusCode(500, new { success = false, error = actualException?.Message ?? ex.Message });
+                // 5. Execute seamlessly on your Aiven database
+                await command.ExecuteNonQueryAsync();
             }
         }
+
+        return Ok(new { success = true, message = "Record processed successfully without reflection!" });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { success = false, error = ex.Message });
+    }
+}
     }
 
     public class GenericSpPayload
