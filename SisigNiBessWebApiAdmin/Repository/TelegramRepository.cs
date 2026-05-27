@@ -114,7 +114,7 @@ namespace SisigNiBessWebApiAdmin.Repository
            
          
                 bool allSentSuccessfully = true;
-                string message = "New inventory added for " + BranchName + " branch.";
+                string message = "New inventory has been sent from the " + BranchName.ToLower() + " branch.";
 
                 foreach (var regDev in RegDevices)
                 {
