@@ -17,7 +17,7 @@ namespace SisigNiBessWebApiAdmin.Repository
         }
         public static async Task<Dictionary<string, object>> GetDataObject<T>(string query)
         {
-            var rslt = await new DBService().GetDataObeject(query);
+            var rslt = await new DBService().GetDataObjectAsync(query);
             return rslt;
         }
         public static async Task ExecuteNonQueryCommandAsync(string query)

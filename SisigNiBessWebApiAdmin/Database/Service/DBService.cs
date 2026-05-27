@@ -9,70 +9,121 @@ namespace SisigNiBessWebApiAdmin.Database.Service
     {
         public static string ConnectionStrng = "server=UbLEYzOvFk1jq.h.filess.io;user=root;database=sisignibess_prod;password=c5e49998c41fa96b59e6ae2d90ac00e4;port=45731";
 
+        //public async Task<List<T>> GetDataListAsync<T>(string query) where T : new()
+        //{
+        //    List<T> res = new List<T>();
+        //    try
+        //    {
+        //        using (MySqlConnection objCon = new MySqlConnection(ConnectionStrng))
+        //        {
+        //            objCon.Open();
+        //            var q = new MySqlCommand(query, objCon);
+
+        //            var r = await Task.Run(() =>
+        //            {
+        //                return q.ExecuteReaderAsync();
+        //            });
+
+        //            while (r.Read())
+        //            {
+        //                T t = new T();
+
+        //                for (int inc = 0; inc < r.FieldCount; inc++)
+        //                {
+        //                    Type type = t.GetType();
+        //                    PropertyInfo prop = type.GetProperty(r.GetName(inc));
+        //                    prop.SetValue(t, r.GetValue(inc), null);
+        //                }
+        //                res.Add(t);
+        //            }
+ 
+        //            r.Close();
+        //            q.Dispose();
+        //            r.DisposeAsync();
+        //        }
+
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return null;
+        //    }
+
+        //    return res;
+        //}
+
         public async Task<List<T>> GetDataListAsync<T>(string query) where T : new()
         {
             List<T> res = new List<T>();
             try
             {
-                using (MySqlConnection objCon = new MySqlConnection(ConnectionStrng))
+                // 1. "using await" ensures clean asynchronous disposal of the connection
+                await using (MySqlConnection objCon = new MySqlConnection(ConnectionStrng))
                 {
-                    objCon.Open();
-                    var q = new MySqlCommand(query, objCon);
+                    await objCon.OpenAsync(); // Use Async open
 
-                    var r = await Task.Run(() =>
+                    await using (MySqlCommand q = new MySqlCommand(query, objCon))
                     {
-                        // Perform intensive calculations here
-                        return q.ExecuteReaderAsync();
-                    });
-
-                    //MainThread.BeginInvokeOnMainThread(() =>
-                    //{
-                    while (r.Read())
-                    {
-                        T t = new T();
-
-                        for (int inc = 0; inc < r.FieldCount; inc++)
+                        // 2. Properly await the reader natively without Task.Run
+                        await using (var r = await q.ExecuteReaderAsync())
                         {
-                            Type type = t.GetType();
-                            PropertyInfo prop = type.GetProperty(r.GetName(inc));
-                            prop.SetValue(t, r.GetValue(inc), null);
-                        }
-                        res.Add(t);
-                    }
-                    //});
+                            // 3. Natively await row reads so the connection doesn't block the thread
+                            while (await r.ReadAsync())
+                            {
+                                T t = new T();
+                                Type type = t.GetType();
 
-                    r.Close();
-                    q.Dispose();
-                    r.DisposeAsync();
-                }
-
-
+                                for (int inc = 0; inc < r.FieldCount; inc++)
+                                {
+                                    // Checking for DBNull prevents mapping crashes
+                                    if (!r.IsDBNull(inc))
+                                    {
+                                        PropertyInfo prop = type.GetProperty(r.GetName(inc));
+                                        if (prop != null)
+                                        {
+                                            prop.SetValue(t, r.GetValue(inc), null);
+                                        }
+                                    }
+                                }
+                                res.Add(t);
+                            }
+                        } // Reader automatically closes and disposes asynchronously here
+                    } // Command automatically disposes here
+                } // Connection automatically returns to pool cleanly here
             }
             catch (Exception ex)
             {
+                // Consider logging 'ex' here so you don't fly blind if a query breaks
                 return null;
             }
 
             return res;
         }
 
+
         public async Task ExecuteNonQueryCommandAsync(string SqlCommand)
         {
-            using (MySqlConnection objCon = new MySqlConnection(ConnectionStrng))
+            try
             {
-                var QryCmd = new MySqlCommand();
-                objCon.Open();
-
-                QryCmd.Connection = objCon;
-                QryCmd.CommandText = SqlCommand;
-                QryCmd.CommandType = CommandType.Text;
-
-                var r = await Task.Run(() =>
+                // 1. "await using" guarantees clean async cleanup and immediate return to the connection pool
+                await using (MySqlConnection objCon = new MySqlConnection(ConnectionStrng))
                 {
-                    return QryCmd.ExecuteNonQueryAsync();
-                });
+                    await objCon.OpenAsync(); // Natively await connection opening
 
-                QryCmd.Dispose();
+                    await using (MySqlCommand QryCmd = new MySqlCommand(SqlCommand, objCon))
+                    {
+                        QryCmd.CommandType = CommandType.Text;
+
+                        // 2. Natively await the non-query execution without Task.Run blocking a thread
+                        await QryCmd.ExecuteNonQueryAsync();
+                    } // QryCmd is automatically disposed here asynchronously
+                } // objCon is automatically closed and returned to the pool here
+            }
+            catch (Exception ex)
+            {
+                // Highly recommended: Log your exception here (e.g., Log.Error(ex)) 
+                // so you don't silently fail if an INSERT/UPDATE breaks.
+                throw;
             }
         }
 
@@ -80,71 +131,86 @@ namespace SisigNiBessWebApiAdmin.Database.Service
         {
             var results = new List<Dictionary<string, object>>();
 
-            // 'using' ensures the connection is closed even if an error occurs
-            using (var connection = new MySqlConnection(ConnectionStrng))
+            try
             {
-                connection.Open();
-
-                using (var command = new MySqlCommand(sql, connection))
+                // 1. Asynchronously opens and manages connection disposal
+                await using (var connection = new MySqlConnection(ConnectionStrng))
                 {
-                    // ExecuteReaderAsync keeps the thread free during database I/O
-                    using (var reader = await command.ExecuteReaderAsync())
+                    await connection.OpenAsync(); // Non-blocking connection open
+
+                    await using (var command = new MySqlCommand(sql, connection))
                     {
-                        while (await reader.ReadAsync())
+                        // 2. Asynchronously manages the reader lifecycle
+                        await using (var reader = await command.ExecuteReaderAsync())
                         {
-                            var row = new Dictionary<string, object>();
-
-                            for (int i = 0; i < reader.FieldCount; i++)
+                            while (await reader.ReadAsync())
                             {
-                                string columnName = reader.GetName(i);
-                                object columnValue = reader.GetValue(i);
+                                var row = new Dictionary<string, object>();
 
-                                // Handle DBNull to avoid issues during JSON serialization
-                                row.Add(columnName, columnValue == DBNull.Value ? null : columnValue);
+                                for (int i = 0; i < reader.FieldCount; i++)
+                                {
+                                    string columnName = reader.GetName(i);
+                                    object columnValue = reader.GetValue(i);
+
+                                    // DBNull check looks great—perfect for JSON serialization stability!
+                                    row.Add(columnName, columnValue == DBNull.Value ? null : columnValue);
+                                }
+
+                                results.Add(row);
                             }
-
-                            results.Add(row);
-                        }
-                    }
-                }
+                        } // Reader cleanly unbinds asynchronously here
+                    } // Command cleanly disposes here
+                } // Connection returns to pool asynchronously here
+            }
+            catch (Exception ex)
+            {
+                // Recommended: Log exception details here if an ad-hoc query fails
+                throw;
             }
 
             return results;
         }
-        public async Task<Dictionary<string, object>> GetDataObeject(string sql)
+        public async Task<Dictionary<string, object>> GetDataObjectAsync(string sql)
         {
-            var results = new Dictionary<string, object>();
+            // Initialize as null so the calling application knows if the record actually exists
+            Dictionary<string, object> result = null;
 
-            // 'using' ensures the connection is closed even if an error occurs
-            using (var connection = new MySqlConnection(ConnectionStrng))
+            try
             {
-                connection.Open();
-
-                using (var command = new MySqlCommand(sql, connection))
+                // 1. Fully async management of the database connection lifecycle
+                await using (var connection = new MySqlConnection(ConnectionStrng))
                 {
-                    // ExecuteReaderAsync keeps the thread free during database I/O
-                    using (var reader = await command.ExecuteReaderAsync())
+                    await connection.OpenAsync(); // Non-blocking open
+
+                    await using (var command = new MySqlCommand(sql, connection))
                     {
-                        while (await reader.ReadAsync())
+                        await using (var reader = await command.ExecuteReaderAsync())
                         {
-                            var row = new Dictionary<string, object>();
-
-                            for (int i = 0; i < reader.FieldCount; i++)
+                            // 2. Change 'while' to 'if' since we only expect a single row
+                            if (await reader.ReadAsync())
                             {
-                                string columnName = reader.GetName(i);
-                                object columnValue = reader.GetValue(i);
+                                result = new Dictionary<string, object>();
 
-                                // Handle DBNull to avoid issues during JSON serialization
-                                row.Add(columnName, columnValue == DBNull.Value ? null : columnValue);
+                                for (int i = 0; i < reader.FieldCount; i++)
+                                {
+                                    string columnName = reader.GetName(i);
+                                    object columnValue = reader.GetValue(i);
+
+                                    // Seamless handling for JSON serialization
+                                    result.Add(columnName, columnValue == DBNull.Value ? null : columnValue);
+                                }
                             }
-
-                            results = row;
-                        }
-                    }
-                }
+                        } // Reader disposes asynchronously here
+                    } // Command disposes here
+                } // Connection returns cleanly to the pool here
+            }
+            catch (Exception ex)
+            {
+                // Recommended: Log your exception here
+                throw;
             }
 
-            return results;
+            return result;
         }
 
     }
