@@ -45,91 +45,91 @@ namespace SisigNiBessWebApiAdmin.Controllers
         }
 
         [HttpPost("ExecuteNonQuerySP")]
-public async Task<IActionResult> ExecuteNonQuerySPAsync([FromBody] GenericSpPayload payload)
-{
-    if (payload == null || string.IsNullOrEmpty(payload.SpName))
-    {
-        return BadRequest(new { success = false, message = "Invalid payload configuration." });
-    }
-
-    try
-    {
-        // 1. Parse the JSON data into a raw dictionary of keys and values 
-        // This completely bypasses System.Text.Json class reflection!
-        var rawJsonText = payload.Data.GetRawText();
-        var dataDictionary = JsonSerializer.Deserialize<Dictionary<string, object>>(rawJsonText);
-
-        if (dataDictionary == null)
+        public async Task<IActionResult> ExecuteNonQuerySPAsync([FromBody] GenericSpPayload payload)
         {
-            return BadRequest(new { success = false, message = "Failed to parse data object into key/value pairs." });
-        }
-
-        // 2. Open the database connection directly right here in the endpoint
-        await using (var connection = new MySqlConnection(DBService.ConnectionStrng))
-        {
-            await connection.OpenAsync();
-
-            await using (var command = new MySqlCommand(payload.SpName, connection))
+            if (payload == null || string.IsNullOrEmpty(payload.SpName))
             {
-                command.CommandType = CommandType.StoredProcedure;
+                return BadRequest(new { success = false, message = "Invalid payload configuration." });
+            }
 
-                // 3. Loop through every key-value pair sent from the branch app
-                foreach (var kvp in dataDictionary)
+            try
+            {
+                // 1. Parse the JSON data into a raw dictionary of keys and values 
+                // This completely bypasses System.Text.Json class reflection!
+                var rawJsonText = payload.Data.GetRawText();
+                var dataDictionary = JsonSerializer.Deserialize<Dictionary<string, object>>(rawJsonText);
+
+                if (dataDictionary == null)
                 {
-                    // If the property name is in your exemptions list (like "Id"), skip it
-                    if (payload.PropExemptions != null && payload.PropExemptions.Contains(kvp.Key))
-                    {
-                        continue;
-                    }
-
-                    // Extract the raw value cleanly
-                    object value = kvp.Value;
-
-                    // System.Text.Json parses numbers and objects into JsonElement structures. 
-                    // We extract the clean underlying value out of it safely.
-                    if (value is JsonElement element)
-                    {
-                        switch (element.ValueKind)
-                        {
-                            case JsonValueKind.String:
-                                value = element.GetString();
-                                break;
-                            case JsonValueKind.Number:
-                                // Automatically handles integers, decimals, and quantities safely
-                                if (element.TryGetInt64(out long l)) value = l;
-                                else value = element.GetDecimal();
-                                break;
-                            case JsonValueKind.True:
-                                value = true;
-                                break;
-                            case JsonValueKind.False:
-                                value = false;
-                                break;
-                            case JsonValueKind.Null:
-                                value = DBNull.Value;
-                                break;
-                            default:
-                                value = element.GetRawText();
-                                break;
-                        }
-                    }
-
-                    // 4. Map it straight into your MySQL stored procedure parameter
-                    command.Parameters.AddWithValue("IN_" + kvp.Key, value ?? DBNull.Value);
+                    return BadRequest(new { success = false, message = "Failed to parse data object into key/value pairs." });
                 }
 
-                // 5. Execute seamlessly on your Aiven database
-                await command.ExecuteNonQueryAsync();
+                // 2. Open the database connection directly right here in the endpoint
+                await using (var connection = new MySqlConnection(DBService.ConnectionStrng))
+                {
+                    await connection.OpenAsync();
+
+                    await using (var command = new MySqlCommand(payload.SpName, connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+
+                        // 3. Loop through every key-value pair sent from the branch app
+                        foreach (var kvp in dataDictionary)
+                        {
+                            // If the property name is in your exemptions list (like "Id"), skip it
+                            if (payload.PropExemptions != null && payload.PropExemptions.Contains(kvp.Key))
+                            {
+                                continue;
+                            }
+
+                            // Extract the raw value cleanly
+                            object value = kvp.Value;
+
+                            // System.Text.Json parses numbers and objects into JsonElement structures. 
+                            // We extract the clean underlying value out of it safely.
+                            if (value is JsonElement element)
+                            {
+                                switch (element.ValueKind)
+                                {
+                                    case JsonValueKind.String:
+                                        value = element.GetString();
+                                        break;
+                                    case JsonValueKind.Number:
+                                        // Automatically handles integers, decimals, and quantities safely
+                                        if (element.TryGetInt64(out long l)) value = l;
+                                        else value = element.GetDecimal();
+                                        break;
+                                    case JsonValueKind.True:
+                                        value = true;
+                                        break;
+                                    case JsonValueKind.False:
+                                        value = false;
+                                        break;
+                                    case JsonValueKind.Null:
+                                        value = DBNull.Value;
+                                        break;
+                                    default:
+                                        value = element.GetRawText();
+                                        break;
+                                }
+                            }
+
+                            // 4. Map it straight into your MySQL stored procedure parameter
+                            command.Parameters.AddWithValue("IN_" + kvp.Key, value ?? DBNull.Value);
+                        }
+
+                        // 5. Execute seamlessly on your Aiven database
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+
+                return Ok(new { success = true, message = "Record processed successfully without reflection!" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
-
-        return Ok(new { success = true, message = "Record processed successfully without reflection!" });
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new { success = false, error = ex.Message });
-    }
-}
     }
 
     public class GenericSpPayload
