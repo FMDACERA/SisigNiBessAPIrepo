@@ -44,8 +44,7 @@ namespace SisigNiBessWebApiAdmin.Controllers
             return await DbServiceRepository.GetDataObject<Dictionary<string, object>>(qry);
         }
 
-        [HttpPost("ExecuteNonQuerySPA")]
-       [HttpPost("ExecuteNonQuerySPA")]
+        [HttpPost("ExecuteNonQuerySP")]
 public async Task<IActionResult> ExecuteNonQuerySPAsync([FromBody] GenericSpPayload payload)
 {
     if (payload == null || string.IsNullOrEmpty(payload.SpName))
