@@ -71,9 +71,9 @@ namespace SisigNiBessWebApiAdmin.Controllers
                 try
                 {
                     string rawJson = payload.Data.GetRawText();
-                    
-                    var plainOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    mappedModel = JsonSerializer.Deserialize(rawJson, modelType, plainOptions);
+
+                    var standardOptions = new JsonSerializerOptions();
+                    mappedModel = JsonSerializer.Deserialize(rawJson, modelType, standardOptions);
 
                 }
                 catch (Exception)

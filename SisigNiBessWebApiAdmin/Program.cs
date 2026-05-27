@@ -1,3 +1,5 @@
+AppContext.SetSwitch("System.Reflection.NullabilityInfoContext.IsSupported", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
