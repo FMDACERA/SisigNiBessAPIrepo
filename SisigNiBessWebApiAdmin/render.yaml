@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: sisignibessapirepo-3
+    runtime: docker
+    envVars:
+      - key: DOTNET_CLI_TELEMETRY_OPTOUT
+        value: "1"
+      # This explicitly tells the linux engine NOT to optimize reflection away
+      - key: DOTNET_PublishTrimmed
+        value: "false"
+      - key: DOTNET_PublishAot
+        value: "false"
