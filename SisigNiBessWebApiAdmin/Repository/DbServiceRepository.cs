@@ -5,6 +5,9 @@ namespace SisigNiBessWebApiAdmin.Repository
 {
     public class DbServiceRepository
     {
+
+        public static string ConnectionString { get; set; }
+
         public static async Task<List<T>> GetDataListAsync<T>(string query) where T : new()
         {
             var rslt = await new DBService().GetDataListAsync<T>(query);

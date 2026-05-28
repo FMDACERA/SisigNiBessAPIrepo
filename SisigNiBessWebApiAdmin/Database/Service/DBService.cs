@@ -1,4 +1,5 @@
 ﻿using MySql.Data.MySqlClient;
+using SisigNiBessWebApiAdmin.Repository;
 using System.Data;
 using System.Reflection;
 using ZstdSharp.Unsafe;
@@ -7,9 +8,9 @@ namespace SisigNiBessWebApiAdmin.Database.Service
 {
     public class DBService
     {
-        //public static string ConnectionStrng = "server=UbLEYzOvFk1jq.h.filess.io;user=root;database=sisignibess_prod;password=c5e49998c41fa96b59e6ae2d90ac00e4;port=45731";
-        public static string ConnectionStrng = "server=mysql-33f0f518-sisignibess.h.aivencloud.com;user=avnadmin;database=sisignibess_prod;password=AVNS_bp3U2UK7NZw2LvAlYSm;port=11269";
-
+        
+        public static string ConnectionStrng = DbServiceRepository.ConnectionString;
+        
         //public async Task<List<T>> GetDataListAsync<T>(string query) where T : new()
         //{
         //    List<T> res = new List<T>();
@@ -100,8 +101,6 @@ namespace SisigNiBessWebApiAdmin.Database.Service
 
             return res;
         }
-
-
         public async Task ExecuteNonQueryCommandAsync(string SqlCommand)
         {
             try
@@ -127,7 +126,6 @@ namespace SisigNiBessWebApiAdmin.Database.Service
                 throw;
             }
         }
-
         public async Task<List<Dictionary<string, object>>> ExecuteQueryAsync(string sql)
         {
             var results = new List<Dictionary<string, object>>();

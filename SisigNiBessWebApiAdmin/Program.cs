@@ -1,7 +1,9 @@
+using SisigNiBessWebApiAdmin.Repository;
+
 AppContext.SetSwitch("System.Reflection.NullabilityInfoContext.IsSupported", true);
 
 var builder = WebApplication.CreateBuilder(args);
-
+DbServiceRepository.ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 // Add services to the container.
 
 builder.Services.AddControllers();
