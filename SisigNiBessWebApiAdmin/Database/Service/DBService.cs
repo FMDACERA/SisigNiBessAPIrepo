@@ -7,7 +7,8 @@ namespace SisigNiBessWebApiAdmin.Database.Service
 {
     public class DBService
     {
-        public static string ConnectionStrng = "server=UbLEYzOvFk1jq.h.filess.io;user=root;database=sisignibess_prod;password=c5e49998c41fa96b59e6ae2d90ac00e4;port=45731";
+        //public static string ConnectionStrng = "server=UbLEYzOvFk1jq.h.filess.io;user=root;database=sisignibess_prod;password=c5e49998c41fa96b59e6ae2d90ac00e4;port=45731";
+        public static string ConnectionStrng = "server=mysql-33f0f518-sisignibess.h.aivencloud.com;user=avnadmin;database=sisignibess_prod;password=AVNS_bp3U2UK7NZw2LvAlYSm;port=11269";
 
         //public async Task<List<T>> GetDataListAsync<T>(string query) where T : new()
         //{
@@ -36,7 +37,7 @@ namespace SisigNiBessWebApiAdmin.Database.Service
         //                }
         //                res.Add(t);
         //            }
- 
+
         //            r.Close();
         //            q.Dispose();
         //            r.DisposeAsync();
