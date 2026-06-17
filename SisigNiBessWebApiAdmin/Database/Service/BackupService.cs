@@ -1,7 +1,10 @@
 ﻿using MailKit.Net.Smtp;
 using MimeKit;
 using MySqlConnector;
+using Org.BouncyCastle.Tls;
 using System.IO;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SisigNiBessWebApiAdmin.Database.Service
@@ -21,13 +24,25 @@ namespace SisigNiBessWebApiAdmin.Database.Service
         }
         public async Task GenerateAndEmailBackupAsync()
         {
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            // 1. Read the Connection String smoothly
+            string connectionString = _configuration.GetConnectionString("DefaultConnection")
+                ?? throw new KeyNotFoundException("Could not find 'ConnectionStrings:DefaultConnection' in appsettings.json");
 
-            // 1. Generate the MySQL dump completely in memory
+            // 2. Read Brevo settings sections using the correct colon notation
+            string apiKey = _configuration["BrevoSettings:ApiKey"]
+                ?? throw new KeyNotFoundException("Could not find 'BrevoSettings:ApiKey' in appsettings.json");
+
+            string senderEmail = _configuration["BrevoSettings:SenderEmail"]
+                ?? throw new KeyNotFoundException("Could not find 'BrevoSettings:SenderEmail' in appsettings.json");
+           
+            string senderName = _configuration["BrevoSettings:SenderName"]
+                ?? throw new KeyNotFoundException("Could not find 'BrevoSettings:SenderName' in appsettings.json");
+
+            string recipientEmail = _configuration["BrevoSettings:RecipientEmail"]
+                ?? throw new KeyNotFoundException("Could not find 'BrevoSettings:RecipientEmail' in appsettings.json");
+
+            // --- Database Dump Logic ---
             using var memoryStream = new MemoryStream();
-
-            _logger.LogInformation("Starting MySQL dump generation...");
-
             using (var conn = new MySqlConnection(connectionString))
             {
                 using (var cmd = new MySqlCommand { Connection = conn })
@@ -35,64 +50,45 @@ namespace SisigNiBessWebApiAdmin.Database.Service
                     using (var backupEngine = new MySqlBackup(cmd))
                     {
                         await conn.OpenAsync();
-
-                        // Exports the database directly into our memory stream
                         backupEngine.ExportToMemoryStream(memoryStream);
-
                         await conn.CloseAsync();
                     }
                 }
             }
 
-            _logger.LogInformation("MySQL dump completed. Preparing email...");
+            // --- HTTP Email Payload Sending Logic ---
+            byte[] backupBytes = memoryStream.ToArray();
+            string fileName = $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
 
-            // Rewind the stream to the beginning so MailKit can read it properly
-            memoryStream.Position = 0;
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("api-key", apiKey);
 
-            // 2. Build the Email Message using MimeKit
-            var smtpSettings = _configuration.GetSection("SmtpSettings");
-
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(smtpSettings["SenderName"], smtpSettings["SenderEmail"]));
-            message.To.Add(new MailboxAddress("Database Administrator", smtpSettings["RecipientEmail"]));
-            message.Subject = $"Automated MySQL Backup - {DateTime.Now:yyyy-MM-dd HH:mm}";
-
-            // Create the email body text
-            var bodyBuilder = new BodyBuilder
+            var emailPayload = new
             {
-                TextBody = $"Hello Admin,\n\nPlease find attached the scheduled database backup generated on {DateTime.Now}.\n\nRegards,\nSisig Ni Bess - API System"
+                sender = new { name = senderName, email = senderEmail },
+                to = new[] { new { email = recipientEmail, name = "System Admin" } },
+                subject = $"Automated Database Backup - {DateTime.Now:yyyy-MM-dd}",
+                htmlContent = "<h3>Database Backup</h3><p>Please find attached the scheduled MySQL dump file.</p>",
+                attachment = new[]
+                {
+            new
+            {
+                content = Convert.ToBase64String(backupBytes),
+                name = fileName
+            }
+        }
             };
 
-            // Attach the memory stream as a file
-            string fileName = $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
-            bodyBuilder.Attachments.Add(fileName, memoryStream.ToArray(), ContentType.Parse("application/sql"));
-            message.Body = bodyBuilder.ToMessageBody();
+            string jsonString = System.Text.Json.JsonSerializer.Serialize(emailPayload);
+            var httpContent = new StringContent(jsonString, System.Text.Encoding.UTF8, "application/json");
 
-            // 3. Send via MailKit SmtpClient
-            using var client = new SmtpClient();
-            try
+            var response = await client.PostAsync("https://api.brevo.com/v3/smtp/email", httpContent);
+
+            if (!response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("Connecting to SMTP server...");
-
-                // Connect using STARTTLS (Port 587)
-                await client.ConnectAsync(smtpSettings["Server"], int.Parse(smtpSettings["Port"]), MailKit.Security.SecureSocketOptions.StartTls);
-
-                // Authenticate with your mail server
-                await client.AuthenticateAsync(smtpSettings["SenderEmail"], smtpSettings["Password"]);
-
-                _logger.LogInformation("Sending email attachment...");
-                await client.SendAsync(message);
-
-                _logger.LogInformation("Backup email sent successfully.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occurred while sending the backup email.");
-                throw;
-            }
-            finally
-            {
-                await client.DisconnectAsync(true);
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Brevo API Error: {errorDetails}");
             }
         }
     }
