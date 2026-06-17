@@ -61,7 +61,7 @@ namespace SisigNiBessWebApiAdmin.Database.Service
             string fileName = $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
 
             
-            string superScret = "xkeysib" + (_configuration["BrevoSettings:KeyPart1"] ?? "") + (_configuration["BrevoSettings:KeyPart2"] ?? "");
+            string superScret =  (_configuration["BrevoSettings:KeyPart1"] ?? "") + (_configuration["BrevoSettings:KeyPart2"] ?? "");
 
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Clear();
