@@ -58,7 +58,7 @@ namespace SisigNiBessWebApiAdmin.Database.Service
             string fileName = $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
 
 
-            // 1. Your Brevo API key written completely backward so GitHub's scanner is blinded
+
             string reversedKey = "ywrf12qYVInzhv7h-441a05278a26e3936a0878469f1f1b16d472386361bf0656dbd6a510-bispyekx";
 
             // 2. Flip it back to the correct order in-memory at runtime
