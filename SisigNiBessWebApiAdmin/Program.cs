@@ -1,3 +1,4 @@
+using SisigNiBessWebApiAdmin.Database.Service;
 using SisigNiBessWebApiAdmin.Repository;
 
 AppContext.SetSwitch("System.Reflection.NullabilityInfoContext.IsSupported", true);
@@ -5,6 +6,9 @@ AppContext.SetSwitch("System.Reflection.NullabilityInfoContext.IsSupported", tru
 var builder = WebApplication.CreateBuilder(args);
 DbServiceRepository.ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 // Add services to the container.
+
+// Register the custom backup service
+builder.Services.AddScoped<IBackupService, BackupService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
