@@ -15,7 +15,7 @@ namespace SisigNiBessWebApiAdmin.Controllers
             _backupService = backupService;
         }
 
-        [HttpPost("trigger-email")]
+        [HttpGet("trigger-email")]
         public async Task<IActionResult> TriggerBackupEmail()
         {
             try
