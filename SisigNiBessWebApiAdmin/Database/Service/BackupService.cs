@@ -62,7 +62,7 @@ namespace SisigNiBessWebApiAdmin.Database.Service
 
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("api-key", apiKey);
+            client.DefaultRequestHeaders.Add("api-key", Secrets.BrevoApiKey);
 
             var emailPayload = new
             {
