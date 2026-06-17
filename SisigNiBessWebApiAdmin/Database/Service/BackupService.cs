@@ -60,7 +60,8 @@ namespace SisigNiBessWebApiAdmin.Database.Service
             byte[] backupBytes = memoryStream.ToArray();
             string fileName = $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
 
-            string superScret = Secrets.BrevoApiKey1 + Secrets.BrevoApiKey2;
+            
+            string superScret = "xkeysib" + (_configuration["BrevoSettings:KeyPart1"] ?? "") + (_configuration["BrevoSettings:KeyPart2"] ?? "");
 
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Clear();
