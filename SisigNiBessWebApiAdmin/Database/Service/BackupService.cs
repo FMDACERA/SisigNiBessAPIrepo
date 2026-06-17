@@ -57,19 +57,10 @@ namespace SisigNiBessWebApiAdmin.Database.Service
             byte[] backupBytes = memoryStream.ToArray();
             string fileName = $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
 
-
-
-            string reversedKey = "ywrf12qYVInzhv7h-441a05278a26e3936a0878469f1f1b16d472386361bf0656dbd6a510-bispyekx";
-
-            // 2. Flip it back to the correct order in-memory at runtime
-            char[] charArray = reversedKey.ToCharArray();
-            Array.Reverse(charArray);
-            string apiKey = new string(charArray);
-
             // 3. Attach it to your Brevo HTTP Request
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("api-key", apiKey);
+            client.DefaultRequestHeaders.Add("api-key", "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");
 
             var emailPayload = new
             {
